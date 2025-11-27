@@ -19,16 +19,17 @@ dotenv.config();
 
 const app = express();
 
-// Middleware
-app.use(express.json());
-app.use(cookieParser());
-import cors from "cors";
+// Required for ES module __dirname
+import { fileURLToPath } from "url";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
+// ⭐ CORS CONFIG (Before all routes)
 app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://resplendent-pie-fe14df.netlify.app", // your frontend!!
+      "https://resplendent-pie-fe14df.netlify.app",
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -36,10 +37,15 @@ app.use(
   })
 );
 
+// Middleware
+app.use(express.json());
+app.use(cookieParser());
 
-// ⭐ Serve uploaded files (VIDEOS, IMAGES, ETC.)
-app.use("/uploads/recordings", express.static(path.join(process.cwd(), "uploads/recordings")));
-
+// ⭐ Serve Uploaded Files
+app.use(
+  "/uploads/recordings",
+  express.static(path.join(__dirname, "uploads/recordings"))
+);
 
 // MongoDB Connection
 const MONGO_URI = process.env.MONGO_URI;
@@ -52,9 +58,7 @@ if (!MONGO_URI) {
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected successfully"))
-  .catch((err) =>
-    console.error("❌ MongoDB connection error:", err.message)
-  );
+  .catch((err) => console.error("❌ MongoDB connection error:", err.message));
 
 mongoose.connection.on("connected", () => {
   console.log("✅ Mongoose connection established.");
@@ -66,7 +70,7 @@ mongoose.connection.on("disconnected", () => {
   console.log("⚠️ Mongoose disconnected.");
 });
 
-// Routes
+// All API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/tutors", tutorRoutes);
 app.use("/api/bookings", bookingRoutes);
@@ -79,6 +83,4 @@ app.use("/api/availability", availabilityRoutes);
 
 // Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () =>
-  console.log(`🚀 Server running on port ${PORT}`)
-);
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
