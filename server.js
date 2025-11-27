@@ -22,12 +22,20 @@ const app = express();
 // Middleware
 app.use(express.json());
 app.use(cookieParser());
+import cors from "cors";
+
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [
+      "http://localhost:5173",
+      "https://resplendent-pie-fe14df.netlify.app", // your frontend!!
+    ],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
+
 
 // ⭐ Serve uploaded files (VIDEOS, IMAGES, ETC.)
 app.use("/uploads/recordings", express.static(path.join(process.cwd(), "uploads/recordings")));
