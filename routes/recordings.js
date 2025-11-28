@@ -1,4 +1,4 @@
-// recordings.js
+// routes/recordings.js
 import express from "express";
 import multer from "multer";
 import fs from "fs";
@@ -12,36 +12,44 @@ import Booking from "../models/Booking.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// ROOT = /opt/render/project/src  (in Render)
+// Correct upload location: ROOT/uploads/recordings
+const projectRoot = path.resolve(__dirname, "..");
+const uploadPath = path.join(projectRoot, "uploads", "recordings");
+
+// Ensure path exists
+if (!fs.existsSync(uploadPath)) {
+  fs.mkdirSync(uploadPath, { recursive: true });
+  console.log("📁 Created uploads/recordings directory FROM recordings.js");
+}
+
 const router = express.Router();
 
 /* ------------------------------------------------------------------
-   Folder path — ALWAYS matches server.js
------------------------------------------------------------------- */
-const uploadPath = path.join(__dirname, "../uploads/recordings");
-
-/* ------------------------------------------------------------------
-   Multer Config
+   Multer storage config
 ------------------------------------------------------------------ */
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadPath),
   filename: (req, file, cb) => {
-    const safeName = file.originalname.replace(/\s+/g, "_").replace(/[^\w.-]/g, "");
-    cb(null, `${Date.now()}-${safeName}`);
+    const clean = file.originalname.replace(/\s+/g, "_").replace(/[^\w.-]/g, "");
+    cb(null, Date.now() + "-" + clean);
   },
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 250 * 1024 * 1024 }, // 250MB limit
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500MB
 });
 
-/* GET ALL RECORDINGS */
+/* ------------------------------------------------------------------
+   GET all recordings (public)
+------------------------------------------------------------------ */
 router.get("/", async (req, res) => {
   try {
-    const filters = {};
-    if (req.query.tutorId) filters.tutor = req.query.tutorId;
+    const filter = {};
+    if (req.query.tutorId) filter.tutor = req.query.tutorId;
 
-    const recs = await Recording.find(filters)
+    const recs = await Recording.find(filter)
       .populate("tutor", "name email")
       .lean();
 
@@ -52,10 +60,13 @@ router.get("/", async (req, res) => {
   }
 });
 
-/* UPLOAD RECORDING */
+/* ------------------------------------------------------------------
+   UPLOAD recording (tutor only)
+------------------------------------------------------------------ */
 router.post("/upload", verifyToken, upload.single("recording"), async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+    if (!req.file)
+      return res.status(400).json({ message: "No file uploaded" });
 
     const { description, subject, price } = req.body;
 
@@ -64,7 +75,7 @@ router.post("/upload", verifyToken, upload.single("recording"), async (req, res)
 
     const fileUrl = `/uploads/recordings/${req.file.filename}`;
 
-    const recording = await Recording.create({
+    const rec = await Recording.create({
       tutor: req.user.id,
       originalFileName: req.file.originalname,
       filePath: fileUrl,
@@ -73,52 +84,59 @@ router.post("/upload", verifyToken, upload.single("recording"), async (req, res)
       price,
     });
 
-    res.json({ message: "Uploaded successfully", recording });
+    res.json({ message: "Uploaded successfully", recording: rec });
   } catch (err) {
     console.error("❌ Upload error:", err);
     res.status(500).json({ message: "Upload failed" });
   }
 });
 
-/* GET TUTOR'S RECORDINGS */
+/* ------------------------------------------------------------------
+   GET tutor's recordings
+------------------------------------------------------------------ */
 router.get("/tutor", verifyToken, async (req, res) => {
   try {
-    const data = await Recording.find({ tutor: req.user.id }).lean();
-    res.json(data);
+    const recs = await Recording.find({ tutor: req.user.id }).lean();
+    res.json(recs);
   } catch (err) {
-    console.error("❌ Tutor recordings error:", err);
-    res.status(500).json({ message: "Failed to load recordings" });
+    console.error("❌ Tutor recordings fetch error:", err);
+    res.status(500).json({ message: "Failed to load tutor recordings" });
   }
 });
 
-/* SECURE URL (if needed) */
+/* ------------------------------------------------------------------
+   SECURE VIDEO URL
+------------------------------------------------------------------ */
 router.get("/:id/url", verifyToken, async (req, res) => {
   try {
     const rec = await Recording.findById(req.params.id).lean();
-    if (!rec) return res.status(404).json({ message: "Not found" });
+    if (!rec) return res.status(404).json({ message: "Recording not found" });
 
+    // Tutor can always access
     if (String(rec.tutor) === String(req.user.id)) {
       return res.json({ url: rec.filePath });
     }
 
+    // Paid student can access
     const paid = await Booking.findOne({
       studentId: req.user.id,
       recording: rec._id,
       paymentStatus: "paid",
     });
 
-    if (!paid) {
+    if (!paid)
       return res.status(403).json({ message: "Please purchase this recording" });
-    }
 
     res.json({ url: rec.filePath });
   } catch (err) {
     console.error("❌ Secure URL error:", err);
-    res.status(500).json({ message: "Failed to load URL" });
+    res.status(500).json({ message: "Failed to load secure URL" });
   }
 });
 
-/* DELETE RECORDING */
+/* ------------------------------------------------------------------
+   DELETE recording (tutor only)
+------------------------------------------------------------------ */
 router.delete("/:id", verifyToken, async (req, res) => {
   try {
     const rec = await Recording.findById(req.params.id);
@@ -127,15 +145,16 @@ router.delete("/:id", verifyToken, async (req, res) => {
     if (String(rec.tutor) !== String(req.user.id))
       return res.status(403).json({ message: "Unauthorized" });
 
-    const fileLoc = path.join(__dirname, "../", rec.filePath);
-
-    if (fs.existsSync(fileLoc)) fs.unlinkSync(fileLoc);
+    const fileDiskPath = path.join(projectRoot, rec.filePath);
+    if (fs.existsSync(fileDiskPath)) {
+      fs.unlinkSync(fileDiskPath);
+    }
 
     await Recording.findByIdAndDelete(req.params.id);
-
     res.json({ message: "Deleted" });
+
   } catch (err) {
-    console.error("❌ Delete error:", err);
+    console.error("❌ Delete recording error:", err);
     res.status(500).json({ message: "Delete failed" });
   }
 });

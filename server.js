@@ -11,19 +11,29 @@ dotenv.config();
 
 const app = express();
 
-// ESM dirname setup
+// ESM dirname fix
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /* ------------------------------------------------------------------
-   ⭐ INIT UPLOAD FOLDERS BEFORE ROUTES LOAD
+   Ensure uploads/recordings exists BEFORE routes load
 ------------------------------------------------------------------ */
-import { initUploads } from "./initUploads.js";
-initUploads();
+const uploadsRoot = path.join(__dirname, "uploads");
+const recordingsDir = path.join(uploadsRoot, "recordings");
+
+if (!fs.existsSync(uploadsRoot)) fs.mkdirSync(uploadsRoot);
+if (!fs.existsSync(recordingsDir)) fs.mkdirSync(recordingsDir, { recursive: true });
+
+console.log("📁 Upload folders ready:", recordingsDir);
 
 /* ------------------------------------------------------------------
-   ⭐ CORS CONFIG
+   Serve static files (correct Render path)
+------------------------------------------------------------------ */
+app.use("/uploads", express.static(uploadsRoot));
+
+/* ------------------------------------------------------------------
+   CORS
 ------------------------------------------------------------------ */
 app.use(
   cors({
@@ -32,8 +42,8 @@ app.use(
       "https://resplendent-pie-fe14df.netlify.app",
     ],
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
@@ -44,16 +54,9 @@ app.use(express.json());
 app.use(cookieParser());
 
 /* ------------------------------------------------------------------
-   ⭐ STATIC FILES
------------------------------------------------------------------- */
-const uploadsRoot = path.join(__dirname, "uploads");
-app.use("/uploads", express.static(uploadsRoot));
-
-/* ------------------------------------------------------------------
-   MONGO CONNECTION
+   MongoDB Connection
 ------------------------------------------------------------------ */
 const MONGO_URI = process.env.MONGO_URI;
-
 if (!MONGO_URI) {
   console.error("❌ Missing MONGO_URI in .env");
   process.exit(1);
@@ -62,10 +65,10 @@ if (!MONGO_URI) {
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB error:", err.message));
+  .catch((err) => console.error("❌ MongoDB error:", err));
 
 /* ------------------------------------------------------------------
-   Import routes AFTER upload folders exist
+   Import routes AFTER uploads folder exists
 ------------------------------------------------------------------ */
 import authRoutes from "./routes/auth.js";
 import tutorRoutes from "./routes/tutors.js";
@@ -78,7 +81,7 @@ import fakePaymentRoutes from "./routes/fakePayment.js";
 import availabilityRoutes from "./routes/availabilityRoutes.js";
 
 /* ------------------------------------------------------------------
-   Register Routes
+   Register routes
 ------------------------------------------------------------------ */
 app.use("/api/auth", authRoutes);
 app.use("/api/tutors", tutorRoutes);
@@ -94,6 +97,7 @@ app.use("/api/availability", availabilityRoutes);
    Start Server
 ------------------------------------------------------------------ */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () =>
-  console.log(`🚀 Server running on https://lms-back-nh5h.onrender.com`)
-);
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on https://lms-back-nh5h.onrender.com`);
+});
