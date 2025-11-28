@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import cookieParser from "cookie-parser";
+import fs from "fs";
 
 import authRoutes from "./routes/auth.js";
 import tutorRoutes from "./routes/tutors.js";
@@ -19,12 +20,37 @@ dotenv.config();
 
 const app = express();
 
-// Required for ES module __dirname
+// ⭐ ESM-compatible __dirname
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ⭐ CORS CONFIG (Before all routes)
+/* ------------------------------------------------------------------
+   ⭐ FIX 1: Render-safe folder creation
+------------------------------------------------------------------ */
+
+const uploadsRoot = path.join(__dirname, "uploads");
+const recordingsDir = path.join(uploadsRoot, "recordings");
+
+// Create /uploads folder
+if (!fs.existsSync(uploadsRoot)) {
+  fs.mkdirSync(uploadsRoot);
+}
+
+// Create /uploads/recordings folder
+if (!fs.existsSync(recordingsDir)) {
+  fs.mkdirSync(recordingsDir, { recursive: true });
+  console.log("📁 Auto-created uploads/recordings");
+}
+
+/* ------------------------------------------------------------------
+   ⭐ FIX 2: Serve uploads folder publicly
+------------------------------------------------------------------ */
+app.use("/uploads", express.static(uploadsRoot));
+
+/* ------------------------------------------------------------------
+   ⭐ CORS 
+------------------------------------------------------------------ */
 app.use(
   cors({
     origin: [
@@ -37,40 +63,29 @@ app.use(
   })
 );
 
-// Middleware
+/* ------------------------------------------------------------------
+   Middleware
+------------------------------------------------------------------ */
 app.use(express.json());
 app.use(cookieParser());
 
-// ⭐ Serve Uploaded Files
-app.use(
-  "/uploads/recordings",
-  express.static(path.join(__dirname, "uploads/recordings"))
-);
-
-// MongoDB Connection
+/* ------------------------------------------------------------------
+   ⭐ MongoDB Connection
+------------------------------------------------------------------ */
 const MONGO_URI = process.env.MONGO_URI;
-
 if (!MONGO_URI) {
-  console.error("❌ MONGO_URI not found in .env file!");
+  console.error("❌ Missing MONGO_URI in .env");
   process.exit(1);
 }
 
 mongoose
   .connect(MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected successfully"))
-  .catch((err) => console.error("❌ MongoDB connection error:", err.message));
+  .then(() => console.log("✅ MongoDB connected"))
+  .catch((err) => console.error("❌ MongoDB Error:", err.message));
 
-mongoose.connection.on("connected", () => {
-  console.log("✅ Mongoose connection established.");
-});
-mongoose.connection.on("error", (err) => {
-  console.error("❌ Mongoose connection error:", err);
-});
-mongoose.connection.on("disconnected", () => {
-  console.log("⚠️ Mongoose disconnected.");
-});
-
-// All API Routes
+/* ------------------------------------------------------------------
+   Routes
+------------------------------------------------------------------ */
 app.use("/api/auth", authRoutes);
 app.use("/api/tutors", tutorRoutes);
 app.use("/api/bookings", bookingRoutes);
@@ -81,6 +96,8 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/fake-payment", fakePaymentRoutes);
 app.use("/api/availability", availabilityRoutes);
 
-// Start Server
+/* ------------------------------------------------------------------
+   Server Start
+------------------------------------------------------------------ */
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
