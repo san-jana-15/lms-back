@@ -1,55 +1,29 @@
+// server.js
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
 import dotenv from "dotenv";
-import path from "path";
 import cookieParser from "cookie-parser";
+import path from "path";
 import fs from "fs";
-
-import authRoutes from "./routes/auth.js";
-import tutorRoutes from "./routes/tutors.js";
-import bookingRoutes from "./routes/bookings.js";
-import recordingRoutes from "./routes/recordings.js";
-import reviewRoutes from "./routes/reviews.js";
-import paymentRoutes from "./routes/payments.js";
-import adminRoutes from "./routes/adminRoutes.js";
-import fakePaymentRoutes from "./routes/fakePayment.js";
-import availabilityRoutes from "./routes/availabilityRoutes.js";
 
 dotenv.config();
 
 const app = express();
 
-// ⭐ ESM-compatible __dirname
+// ESM dirname setup
 import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 /* ------------------------------------------------------------------
-   ⭐ FIX 1: Render-safe folder creation
+   ⭐ INIT UPLOAD FOLDERS BEFORE ROUTES LOAD
 ------------------------------------------------------------------ */
-
-const uploadsRoot = path.join(__dirname, "uploads");
-const recordingsDir = path.join(uploadsRoot, "recordings");
-
-// Create /uploads folder
-if (!fs.existsSync(uploadsRoot)) {
-  fs.mkdirSync(uploadsRoot);
-}
-
-// Create /uploads/recordings folder
-if (!fs.existsSync(recordingsDir)) {
-  fs.mkdirSync(recordingsDir, { recursive: true });
-  console.log("📁 Auto-created uploads/recordings");
-}
+import { initUploads } from "./initUploads.js";
+initUploads();
 
 /* ------------------------------------------------------------------
-   ⭐ FIX 2: Serve uploads folder publicly
------------------------------------------------------------------- */
-app.use("/uploads", express.static(uploadsRoot));
-
-/* ------------------------------------------------------------------
-   ⭐ CORS 
+   ⭐ CORS CONFIG
 ------------------------------------------------------------------ */
 app.use(
   cors({
@@ -70,9 +44,16 @@ app.use(express.json());
 app.use(cookieParser());
 
 /* ------------------------------------------------------------------
-   ⭐ MongoDB Connection
+   ⭐ STATIC FILES
+------------------------------------------------------------------ */
+const uploadsRoot = path.join(__dirname, "uploads");
+app.use("/uploads", express.static(uploadsRoot));
+
+/* ------------------------------------------------------------------
+   MONGO CONNECTION
 ------------------------------------------------------------------ */
 const MONGO_URI = process.env.MONGO_URI;
+
 if (!MONGO_URI) {
   console.error("❌ Missing MONGO_URI in .env");
   process.exit(1);
@@ -81,10 +62,23 @@ if (!MONGO_URI) {
 mongoose
   .connect(MONGO_URI)
   .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB Error:", err.message));
+  .catch((err) => console.error("❌ MongoDB error:", err.message));
 
 /* ------------------------------------------------------------------
-   Routes
+   Import routes AFTER upload folders exist
+------------------------------------------------------------------ */
+import authRoutes from "./routes/auth.js";
+import tutorRoutes from "./routes/tutors.js";
+import bookingRoutes from "./routes/bookings.js";
+import recordingRoutes from "./routes/recordings.js";
+import reviewRoutes from "./routes/reviews.js";
+import paymentRoutes from "./routes/payments.js";
+import adminRoutes from "./routes/adminRoutes.js";
+import fakePaymentRoutes from "./routes/fakePayment.js";
+import availabilityRoutes from "./routes/availabilityRoutes.js";
+
+/* ------------------------------------------------------------------
+   Register Routes
 ------------------------------------------------------------------ */
 app.use("/api/auth", authRoutes);
 app.use("/api/tutors", tutorRoutes);
@@ -97,7 +91,9 @@ app.use("/api/fake-payment", fakePaymentRoutes);
 app.use("/api/availability", availabilityRoutes);
 
 /* ------------------------------------------------------------------
-   Server Start
+   Start Server
 ------------------------------------------------------------------ */
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+app.listen(PORT, () =>
+  console.log(`🚀 Server running on https://lms-back-nh5h.onrender.com`)
+);
