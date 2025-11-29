@@ -36,16 +36,18 @@ app.use("/uploads", express.static(uploadsRoot));
    CORS
 ------------------------------------------------------------------ */
 app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "https://resplendent-pie-fe14df.netlify.app",
-    ],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
+   cors({
+      origin: [
+         "http://localhost:5173",
+         "https://lmsfront.netlify.app",
+         "https://resplendent-pie-fe14df.netlify.app",
+      ],
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+      credentials: true,
+      allowedHeaders: ["Content-Type", "Authorization"],
+   })
 );
+
 
 /* ------------------------------------------------------------------
    Middleware
@@ -58,14 +60,14 @@ app.use(cookieParser());
 ------------------------------------------------------------------ */
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) {
-  console.error("❌ Missing MONGO_URI in .env");
-  process.exit(1);
+   console.error("❌ Missing MONGO_URI in .env");
+   process.exit(1);
 }
 
 mongoose
-  .connect(MONGO_URI)
-  .then(() => console.log("✅ MongoDB connected"))
-  .catch((err) => console.error("❌ MongoDB error:", err));
+   .connect(MONGO_URI)
+   .then(() => console.log("✅ MongoDB connected"))
+   .catch((err) => console.error("❌ MongoDB error:", err));
 
 /* ------------------------------------------------------------------
    Import routes AFTER uploads folder exists
@@ -99,5 +101,5 @@ app.use("/api/availability", availabilityRoutes);
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on https://lms-back-nh5h.onrender.com`);
+   console.log(`🚀 Server running on port ${PORT}`);
 });
