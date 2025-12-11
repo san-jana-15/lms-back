@@ -39,17 +39,15 @@ app.use("/uploads", express.static(uploadsRoot));
    FIXED CORS FOR EXPRESS v5 — MUST COME BEFORE ROUTES
 ---------------------------------------------------------------- */
 app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "https://lms-front-end.netlify.app",  // ✅ correct frontend
-      "https://lmsfront.netlify.app",
-      "https://resplendent-pie-fe14df.netlify.app",
-    ],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization"],
-  })
+   cors({
+      origin: [
+         "http://localhost:5173",
+         "https://learningmanagementsystems.netlify.app/"
+      ],
+      methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
+      credentials: true,
+      allowedHeaders: ["Content-Type", "Authorization"],
+   })
 );
 
 
