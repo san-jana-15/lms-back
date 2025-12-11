@@ -67,22 +67,19 @@ app.use(
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     credentials: true,
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-    preflightContinue: false, // let cors package send the preflight response
+    preflightContinue: false, 
   })
 );
 
-// ensure OPTIONS preflight is handled for all routes
-app.options("*", cors());
 
-/* ------------------------------------------------------------------
-   Middleware
------------------------------------------------------------------- */
+app.options("/*", cors());
+
+
+
 app.use(express.json());
 app.use(cookieParser());
 
-/* ------------------------------------------------------------------
-   MongoDB Connection
------------------------------------------------------------------- */
+
 const MONGO_URI = process.env.MONGO_URI;
 if (!MONGO_URI) {
   console.error("❌ Missing MONGO_URI in .env");
@@ -94,9 +91,7 @@ mongoose
   .then(() => console.log("✅ MongoDB connected"))
   .catch((err) => console.error("❌ MongoDB error:", err));
 
-/* ------------------------------------------------------------------
-   Import routes AFTER uploads folder exists
------------------------------------------------------------------- */
+
 import authRoutes from "./routes/auth.js";
 import tutorRoutes from "./routes/tutors.js";
 import bookingRoutes from "./routes/bookings.js";
@@ -107,9 +102,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import fakePaymentRoutes from "./routes/fakePayment.js";
 import availabilityRoutes from "./routes/availabilityRoutes.js";
 
-/* ------------------------------------------------------------------
-   Register routes
------------------------------------------------------------------- */
+
 app.use("/api/auth", authRoutes);
 app.use("/api/tutors", tutorRoutes);
 app.use("/api/bookings", bookingRoutes);
@@ -120,9 +113,7 @@ app.use("/api/admin", adminRoutes);
 app.use("/api/fake-payment", fakePaymentRoutes);
 app.use("/api/availability", availabilityRoutes);
 
-/* ------------------------------------------------------------------
-   Start Server
------------------------------------------------------------------- */
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
